@@ -1,0 +1,60 @@
+service: task-app
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  stage: ${opt:stage, "dev"}
+  region: ${opt:region, "us-east-1"}
+  profile: ${opt:profile, "default"}
+  runtime: dotnet6
+  iam:
+    role:
+      statements: 
+        - Effect: Allow
+          Action:
+            - dynamodb:*
+          Resource: 'arn:aws:dynamodb:us-east-2:*:*'
+package:
+  individually: true
+
+functions:
+  post-tasks:
+    handler: PostTaskFunction::PostTaskFunction.Function::FunctionHandler
+    package:
+      artifact: src/PostTaskFunction/bin/Release/net6.0/PostTaskFunction.zip
+    events:
+      - http:
+          path: /tasks
+          method: post
+  list-tasks:
+    handler: ListTaskFunction::ListTaskFunction.Function::FunctionHandler
+    package:
+      artifact: src/ListTaskFunction/bin/Release/net6.0/ListTaskFunction.zip
+    events:
+      - http:
+          path: /tasks
+          method: get
+  get-tasks:
+    handler: GetTaskFunction::GetTaskFunction.Function::FunctionHandler
+    package:
+      artifact: src/GetTaskFunction/bin/Release/net6.0/GetTaskFunction.zip
+    events:
+      - http:
+          path: /tasks/{id}
+          method: get
+
+resources:
+  Resources:
+    tasksTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: taskstable
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
